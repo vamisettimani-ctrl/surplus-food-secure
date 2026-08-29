@@ -1,20 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useDemoData } from '../context/DemoDataContext';
-import { LISTING_STATUS, ROLES } from '../config/constants';
+import { listingsService } from '../services/listings';
+import { LISTING_STATUS } from '../config/constants';
 
 export default function MyListingsPage() {
-  const { user } = useAuth();
-  const { listings } = useDemoData();
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
 
-  // Filter listings based on active persona
-  const userListings = listings.filter((l) =>
-    user?.role === ROLES.INDIVIDUAL_DONOR ? l.donor_role === ROLES.INDIVIDUAL_DONOR : l.donor_role === ROLES.RESTAURANT
-  );
+  useEffect(() => {
+    const params = filter ? { status: filter } : {};
+    listingsService.getMine(params)
+      .then((res) => setListings(res.data || []))
+      .catch(() => setListings([]))
+      .finally(() => setLoading(false));
+  }, [filter]);
 
-  const filteredListings = userListings.filter((l) => (filter ? l.status === filter : true));
+  const handleCancel = async (id) => {
+    const reason = prompt('Please provide a reason for cancellation:');
+    if (!reason) return;
+    try {
+      await listingsService.cancel(id, reason);
+      setListings((prev) => prev.map((l) => l.id === id ? { ...l, status: 'CANCELLED' } : l));
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Failed to cancel listing.');
+    }
+  };
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
@@ -28,6 +39,8 @@ export default function MyListingsPage() {
     }
   };
 
+  if (loading) return <div className="loading">Loading listings...</div>;
+
   return (
     <div className="stitch-dashboard">
       <div className="dashboard-banner">
@@ -37,50 +50,43 @@ export default function MyListingsPage() {
           <p>Complete lifecycle history of all declared surplus meals and real-time delivery status tracking.</p>
         </div>
         <div className="banner-actions">
-          <Link to="/dashboard/listings/new" className="stitch-btn-primary">
-            + Declare New Surplus
+          <Link to="/dashboard/listings/new" style={{ padding: '10px 16px', background: '#15803d', color: '#ffffff', borderRadius: '6px', fontWeight: 600, fontSize: '13px', textDecoration: 'none' }}>
+            Create Listing
           </Link>
         </div>
       </div>
 
       <div className="stitch-section-card">
         <div className="section-card-header">
-          <div>
-            <h2>Listings History ({userListings.length})</h2>
-            <p>Filter by state machine status</p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
-              type="button"
               onClick={() => setFilter('')}
               style={{
-                padding: '6px 12px',
-                borderRadius: '9999px',
-                border: !filter ? '1px solid #0f172a' : '1px solid #e2e8f0',
-                background: !filter ? '#0f172a' : '#ffffff',
+                padding: '6px 14px',
+                borderRadius: '4px',
+                border: !filter ? '1px solid #15803d' : '1px solid #cbd5e1',
+                background: !filter ? '#15803d' : '#ffffff',
                 color: !filter ? '#ffffff' : '#475569',
                 cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 600,
+                fontSize: '12px',
+                fontWeight: 600
               }}
             >
-              All Statuses
+              All
             </button>
             {Object.values(LISTING_STATUS).map((s) => (
               <button
                 key={s}
-                type="button"
                 onClick={() => setFilter(s)}
                 style={{
-                  padding: '6px 12px',
-                  borderRadius: '9999px',
-                  border: filter === s ? '1px solid #0f172a' : '1px solid #e2e8f0',
-                  background: filter === s ? '#0f172a' : '#ffffff',
+                  padding: '6px 14px',
+                  borderRadius: '4px',
+                  border: filter === s ? '1px solid #15803d' : '1px solid #cbd5e1',
+                  background: filter === s ? '#15803d' : '#ffffff',
                   color: filter === s ? '#ffffff' : '#475569',
                   cursor: 'pointer',
-                  fontSize: '11px',
-                  fontWeight: 600,
+                  fontSize: '12px',
+                  fontWeight: 600
                 }}
               >
                 {s.replace(/_/g, ' ')}
@@ -99,17 +105,18 @@ export default function MyListingsPage() {
                 <th>Best Before</th>
                 <th>Assigned Destination</th>
                 <th>Dispatch Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredListings.length === 0 ? (
+              {listings.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
                     No listings match the selected filter.
                   </td>
                 </tr>
               ) : (
-                filteredListings.map((item) => (
+                listings.map((item) => (
                   <tr key={item.id}>
                     <td>
                       <div className="item-title">{item.food_type}</div>
@@ -134,6 +141,29 @@ export default function MyListingsPage() {
                       <span className={`status-pill ${getStatusBadgeClass(item.status)}`}>
                         {item.status.replace(/_/g, ' ')}
                       </span>
+                    </td>
+                    <td>
+                      {!['DELIVERED', 'EXPIRED', 'CANCELLED'].includes(item.status) && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancel(item.id)}
+                          style={{
+                            padding: '6px 12px',
+                            background: '#ffffff',
+                            border: '1px solid #cbd5e1',
+                            color: '#dc2626',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseOver={(e) => { e.target.style.background = '#fee2e2'; }}
+                          onMouseOut={(e) => { e.target.style.background = '#ffffff'; }}
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

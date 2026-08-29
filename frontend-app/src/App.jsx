@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { DemoDataProvider } from './context/DemoDataContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ROLES } from './config/constants';
@@ -21,6 +21,7 @@ import VerificationSubmitPage from './pages/VerificationSubmitPage';
 import ImpactStatsPage from './pages/ImpactStatsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import VerificationQueuePage from './pages/VerificationQueuePage';
+import VerificationPendingPage from './pages/VerificationPendingPage';
 
 import './App.css';
 
@@ -41,10 +42,7 @@ function App() {
             } />
             <Route path="/verification-pending" element={
               <ProtectedRoute>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: '16px' }}>
-                  <h2 style={{ color: '#0f172a' }}>Verification Pending</h2>
-                  <p style={{ color: '#64748b' }}>Your account is being reviewed by the platform administrators.</p>
-                </div>
+                <VerificationPendingPage />
               </ProtectedRoute>
             } />
 
@@ -57,12 +55,12 @@ function App() {
 
               {/* Donor routes */}
               <Route path="listings/new" element={
-                <ProtectedRoute allowedRoles={[ROLES.RESTAURANT, ROLES.INDIVIDUAL_DONOR, ROLES.ADMIN]}>
+                <ProtectedRoute allowedRoles={[ROLES.RESTAURANT, ROLES.INDIVIDUAL_DONOR, ROLES.ADMIN]} requireVerified>
                   <CreateListingPage />
                 </ProtectedRoute>
               } />
               <Route path="listings" element={
-                <ProtectedRoute allowedRoles={[ROLES.RESTAURANT, ROLES.INDIVIDUAL_DONOR, ROLES.NGO, ROLES.ADMIN]}>
+                <ProtectedRoute allowedRoles={[ROLES.RESTAURANT, ROLES.INDIVIDUAL_DONOR, ROLES.ADMIN]}>
                   <MyListingsPage />
                 </ProtectedRoute>
               } />
@@ -70,11 +68,11 @@ function App() {
               {/* NGO routes */}
               <Route path="matched" element={
                 <ProtectedRoute allowedRoles={[ROLES.NGO, ROLES.ADMIN]}>
-                  <NGODashboard />
+                  <MatchInboxPage />
                 </ProtectedRoute>
               } />
               <Route path="board" element={
-                <ProtectedRoute allowedRoles={[ROLES.NGO, ROLES.ADMIN]}>
+                <ProtectedRoute allowedRoles={[ROLES.NGO, ROLES.ADMIN]} requireVerified>
                   <BrowseBoardPage />
                 </ProtectedRoute>
               } />
@@ -103,7 +101,7 @@ function App() {
             </Route>
 
             {/* Redirects */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/unauthorized" element={
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column' }}>
                 <h2 style={{ color: '#0f172a' }}>Access Restricted</h2>

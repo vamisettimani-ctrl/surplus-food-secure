@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDemoData } from '../context/DemoDataContext';
+import { listingsService } from '../services/listings';
 import { PERISHABILITY, ROLES } from '../config/constants';
 import './CreateListingPage.css';
 
@@ -65,13 +66,17 @@ export default function CreateListingPage() {
         safety_ack: form.safety_ack,
       };
 
-      createListing(payload);
-
-      setTimeout(() => {
-        navigate('/dashboard/listings');
-      }, 400);
+      await listingsService.create(payload);
+      navigate('/dashboard/listings');
     } catch (err) {
-      setError('Failed to publish listing.');
+      const errMsg = err.response?.data?.error?.message;
+      if (Array.isArray(errMsg)) {
+        setError(errMsg.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+      } else if (typeof errMsg === 'object' && errMsg !== null) {
+        setError(JSON.stringify(errMsg));
+      } else {
+        setError(errMsg || 'Failed to publish listing.');
+      }
     } finally {
       setLoading(false);
     }

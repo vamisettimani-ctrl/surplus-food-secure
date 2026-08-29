@@ -1,17 +1,28 @@
-import { Link } from 'react-router-dom';
-import { useDemoData } from '../context/DemoDataContext';
-import { LISTING_STATUS } from '../config/constants';
+import { useState, useEffect } from 'react';
+import { listingsService } from '../services/listings';
 
 export default function BrowseBoardPage() {
-  const { listings, claimBoardListing } = useDemoData();
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Show listings that are either LISTED (unmatched) or AVAILABLE
-  const boardListings = listings.filter((l) => l.status === LISTING_STATUS.LISTED);
+  useEffect(() => {
+    listingsService.getBoard()
+      .then((res) => setListings(res.data || []))
+      .catch(() => setListings([]))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const handleClaim = (id) => {
-    claimBoardListing(id);
-    alert('Listing successfully claimed! Handover arranged.');
+  const handleClaim = async (id) => {
+    try {
+      await listingsService.claim(id);
+      setListings((prev) => prev.filter((l) => l.id !== id));
+      alert('Listing successfully claimed! Handover arranged.');
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Failed to claim listing.');
+    }
   };
+
+  if (loading) return <div className="loading">Loading board listings...</div>;
 
   return (
     <div className="stitch-dashboard">
@@ -32,14 +43,14 @@ export default function BrowseBoardPage() {
         </div>
 
         <div style={{ padding: '24px' }}>
-          {boardListings.length === 0 ? (
+          {listings.length === 0 ? (
             <div className="empty-inbox">
               <div className="empty-title">No unassigned listings on the public board</div>
               <p>All active listings have already been auto-matched to nearby shelters.</p>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-              {boardListings.map((l) => (
+              {listings.map((l) => (
                 <div
                   key={l.id}
                   style={{
@@ -56,10 +67,10 @@ export default function BrowseBoardPage() {
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '4px' }}>
-                        {l.donor_name}
+                        {l.donor_name || 'Restaurant'}
                       </span>
                       <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803d' }}>
-                        {l.distance_km || 3.4} km away
+                        {l.distance_km != null ? `${l.distance_km.toFixed(1)} km away` : 'Nearby'}
                       </span>
                     </div>
 
@@ -70,7 +81,7 @@ export default function BrowseBoardPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#334155', marginBottom: '18px' }}>
                       <div><span style={{ color: '#64748b' }}>Quantity:</span> <strong>{l.quantity_meals} meals</strong></div>
                       <div><span style={{ color: '#64748b' }}>Best Before:</span> {new Date(l.best_before_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                      <div><span style={{ color: '#64748b' }}>Location:</span> {l.address}</div>
+                      <div><span style={{ color: '#64748b' }}>Location:</span> {l.address || `${l.lat.toFixed(4)}, ${l.lng.toFixed(4)}`}</div>
                     </div>
                   </div>
 

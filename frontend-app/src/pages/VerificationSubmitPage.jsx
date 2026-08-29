@@ -6,7 +6,7 @@ import { uploadService } from '../services/uploads';
 import { ROLES, VEHICLE_TYPES } from '../config/constants';
 
 export default function VerificationSubmitPage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -72,11 +72,22 @@ export default function VerificationSubmitPage() {
 
   return (
     <div style={{ maxWidth: '600px', margin: '40px auto', padding: '0 20px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, margin: 0, color: '#0f172a' }}>Submit Verification Documents</h1>
-        <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0' }}>
-          Identity and license verification is required before you can list, claim, or deliver surplus food.
-        </p>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, margin: 0, color: '#0f172a' }}>Submit Verification Documents</h1>
+          <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0' }}>
+            Identity and license verification is required before you can list, claim, or deliver surplus food.
+          </p>
+        </div>
+        <button 
+          onClick={async () => {
+            await logout();
+            navigate('/login');
+          }}
+          style={{ padding: '8px 14px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', color: '#475569', fontWeight: 600, cursor: 'pointer', flexShrink: 0, marginLeft: '12px' }}
+        >
+          Sign Out
+        </button>
       </div>
 
       {error && (
